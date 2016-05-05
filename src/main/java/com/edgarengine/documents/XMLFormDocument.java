@@ -1,60 +1,53 @@
-package com.edgarengine;
-
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.*;
-import java.util.LinkedList;
-import java.util.Stack;
-import java.util.logging.Logger;
+package com.edgarengine.documents;
 
 import com.mongodb.BasicDBObject;
-import org.bson.*;
+import org.bson.BSONObject;
+import org.bson.BsonArray;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.types.BasicBSONList;
 import org.json.JSONObject;
 import org.json.XML;
 import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.LinkedList;
+import java.util.Stack;
+import java.util.logging.Logger;
+
 /**
- * Created by jinchengchen on 4/29/16.
+ * Created by jinchengchen on 5/5/16.
  */
-public class Form4Document {
-    private static Logger LOG = Logger.getLogger(Form4Document.class.getCanonicalName());
+public abstract class XMLFormDocument {
+    private static Logger LOG = Logger.getLogger(XMLFormDocument.class.getCanonicalName());
     private String file_path;
     private BasicDBObject mongo_doc;
     private Stack<BasicDBObject> track;
     private LinkedList<String> file_lines;
     private int number_of_documents;
 
-    private Form4Document() {}
-
-    public static Form4Document of(String file_path) {
+    public static Form4Document form4Of(String file_path) {
         Form4Document instance = new Form4Document();
-        instance.file_path = file_path;
+        instance.setFilePath(file_path);
         return instance;
     }
 
-    public BasicDBObject parse() throws IOException, ParserConfigurationException, SAXException {
-
-        Form4Document doc = this.initialize()
-                .readOneLine("<SEC-DOCUMENT>")
-                .readOneLine("<SEC-HEADER>")
-                .readOneLine("<ACCEPTANCE-DATETIME>")
-                .readOneLine("ACCESSION NUMBER:")
-                .readOneLine("CONFORMED SUBMISSION TYPE:")
-                .readDocumentCount("PUBLIC DOCUMENT COUNT:")
-                .readOneLine("CONFORMED PERIOD OF REPORT:")
-                .readOneLine("FILED AS OF DATE:")
-                .readOneLine("DATE AS OF CHANGE:")
-                .readIssuerAndReportingOwners()
-                .ignoreKey("</SEC-HEADER>");
-
-        for (int i = 0; i < this.number_of_documents; i++) {
-            doc.readDocument();
-        }
-
-        return doc.ignoreKey("</SEC-DOCUMENT>").done();
+    public static FormDDocument formDOf(String file_path) {
+        FormDDocument instance = new FormDDocument();
+        instance.setFilePath(file_path);
+        return instance;
     }
 
-    private Form4Document initialize() throws IOException {
+
+    /**
+     * Public methods
+     */
+
+    public BasicDBObject parse() throws IOException, ParserConfigurationException, SAXException {
         track = new Stack<BasicDBObject>();
         mongo_doc = new BasicDBObject();
         file_lines = new LinkedList<String>();
@@ -68,10 +61,30 @@ public class Form4Document {
                 file_lines.offer(line.trim());
             }
         }
-        return this;
+
+        return this.readOneLine("<SEC-DOCUMENT>")
+                .readOneLine("<SEC-HEADER>")
+                .readOneLine("<ACCEPTANCE-DATETIME>")
+                .readOneLine("ACCESSION NUMBER:")
+                .readOneLine("CONFORMED SUBMISSION TYPE:")
+                .readDocumentCount("PUBLIC DOCUMENT COUNT:")
+                .readHeaders()
+                .readRelatedPersons()
+                .ignoreKey("</SEC-HEADER>")
+                .readDocuments()
+                .ignoreKey("</SEC-DOCUMENT>")
+                .done();
     }
 
-    private BasicDBObject done() throws IOException {
+    /**
+     * Common methods
+     */
+
+    void setFilePath(String file_path) {
+        this.file_path = file_path;
+    }
+
+    BasicDBObject done() throws IOException {
         if (track.size() != 1) {
             LOG.severe(String.format("Form 4 format exception: unfinished stack in file %s!!", this.file_path));
             throw new UnsupportedEncodingException();
@@ -84,15 +97,15 @@ public class Form4Document {
         return mongo_doc;
     }
 
-    private final Form4Document readOneLine(String key) throws IOException {
+    final XMLFormDocument readOneLine(String key) throws IOException {
         return readOneLine(false, false, key);
     }
 
-    private final Form4Document readOneLine(boolean optional, String key) throws IOException {
+    final XMLFormDocument readOneLine(boolean optional, String key) throws IOException {
         return readOneLine(false, optional, key);
     }
 
-    private Form4Document readOneLine(boolean strict_key, boolean optional, String key) throws IOException {
+    XMLFormDocument readOneLine(boolean strict_key, boolean optional, String key) throws IOException {
         String pretty_key = key;
         if (!strict_key) {
             pretty_key = getPrettyKey(key);
@@ -111,11 +124,32 @@ public class Form4Document {
         return this;
     }
 
-    private Form4Document readSection(String header, String... keys) throws UnsupportedEncodingException {
+    XMLFormDocument readLines(String key) {
+        String pretty_key = key;
+        pretty_key = getPrettyKey(key);
+
+        String line;
+        BasicBSONList values = new BasicBSONList();
+        while ((line = file_lines.peek()) != null) {
+            if (line.startsWith(key)) {
+                values.add(line.substring(key.length()).trim());
+                file_lines.poll();
+            } else {
+                break;
+            }
+        }
+
+        if (values.size() > 0) {
+            track.peek().put(pretty_key, values);
+        }
+        return this;
+    }
+
+    XMLFormDocument readSection(String header, String... keys) throws UnsupportedEncodingException {
         return readSection(false, true, header, keys);
     }
 
-    private Form4Document readSections(String header, String... keys) throws UnsupportedEncodingException {
+    XMLFormDocument readSections(String header, String... keys) throws UnsupportedEncodingException {
         BsonArray sections_array = new BsonArray();
         while (file_lines.peek().equalsIgnoreCase(header)) {
             file_lines.poll();
@@ -140,7 +174,7 @@ public class Form4Document {
         return this;
     }
 
-    private Form4Document readSection(boolean optional, String header, String... keys)
+    XMLFormDocument readSection(boolean optional, String header, String... keys)
             throws UnsupportedEncodingException {
         return readSection(false, optional, header, keys);
     }
@@ -151,7 +185,7 @@ public class Form4Document {
      * @param header
      * @param keys Keys are all optional. However they should be a complete set in order.
      */
-    private Form4Document readSection(boolean strict_key, boolean optional, String header, String... keys)
+    XMLFormDocument readSection(boolean strict_key, boolean optional, String header, String... keys)
             throws UnsupportedEncodingException {
         // Find header first. If it is not found, throw exception unless it is optional.
         if (file_lines.peek().equalsIgnoreCase(header)) {
@@ -172,7 +206,7 @@ public class Form4Document {
         // Keys
         for (String key : keys) {
             if (!file_lines.peek().startsWith(key)) {
-                 continue;
+                continue;
             }
             String pretty_key = key;
             if (!strict_key) {
@@ -184,43 +218,11 @@ public class Form4Document {
         return this;
     }
 
-    private Form4Document readHeader(String key) throws IOException {
-        return readHeader(key, false, false);
-    }
-
-    private Form4Document readHeader(String key, boolean strict_key, boolean optional) throws IOException {
-        String pretty_key = key;
-        if (!strict_key) {
-            pretty_key = getPrettyKey(key);
-        }
-
-        String line = file_lines.poll();
-
-        if (!line.equalsIgnoreCase(key)) {
-            if (optional) {
-                return this;
-            } else {
-                LOG.severe(String.format("Form 4 format exception on key %s, line %s, in %s", key, line ,file_path));
-                throw new UnsupportedEncodingException();
-            }
-        }
-
-        BasicDBObject child = new BasicDBObject();
-        track.peek().put(pretty_key, child);
-        track.push(child);
-        return this;
-    }
-
-    private Form4Document completeHeader() {
-        track.pop();
-        return this;
-    }
-
-    private Form4Document ignoreKey(String key) throws IOException {
+    XMLFormDocument ignoreKey(String key) throws IOException {
         return ignoreKey(true, key);
     }
 
-    private Form4Document ignoreKey(boolean optional, String key) throws IOException {
+    XMLFormDocument ignoreKey(boolean optional, String key) throws IOException {
         String line = file_lines.peek();
         if (line == null || !line.contains(key)) {
             if (!optional) {
@@ -234,7 +236,7 @@ public class Form4Document {
         return this;
     }
 
-    private Form4Document readDocumentCount(String key) throws UnsupportedEncodingException {
+    XMLFormDocument readDocumentCount(String key) throws UnsupportedEncodingException {
         String line = file_lines.poll();
         if (line == null || !line.contains(key)) {
             LOG.severe(String.format("Form 4 format exception on key %s line %s in %s", key, line, file_path));
@@ -245,7 +247,14 @@ public class Form4Document {
         return this;
     }
 
-    private Form4Document readDocument() throws IOException, ParserConfigurationException, SAXException {
+    XMLFormDocument readDocuments() throws IOException, ParserConfigurationException, SAXException {
+        for (int i = 0; i < this.number_of_documents; i++) {
+            readDocument();
+        }
+        return this;
+    }
+
+    XMLFormDocument readDocument() throws IOException, ParserConfigurationException, SAXException {
         String line = file_lines.peek();
         if (line == null || !line.equalsIgnoreCase("<DOCUMENT>")) {
             file_lines.poll();
@@ -285,49 +294,7 @@ public class Form4Document {
         track.pop();
         return this;
     }
-
-    private final Form4Document readIssuerAndReportingOwners() throws IOException {
-        BasicBSONList reporting_owners = new BasicBSONList();
-        BasicBSONList issuers = new BasicBSONList();
-        while (file_lines.peek().equalsIgnoreCase("REPORTING-OWNER:") || file_lines.peek().equalsIgnoreCase("ISSUER:")) {
-            if (file_lines.peek().equalsIgnoreCase("REPORTING-OWNER:")) {
-                file_lines.poll();
-                BasicDBObject owner = new BasicDBObject();
-                reporting_owners.add(owner);
-                track.push(owner);
-                this.readSection("OWNER DATA:", "COMPANY CONFORMED NAME:", "CENTRAL INDEX KEY:",
-                        "STANDARD INDUSTRIAL CLASSIFICATION:", "STATE OF INCORPORATION:", "FISCAL YEAR END:")
-                        .readSection(true, "OWNER DATA:", "COMPANY CONFORMED NAME:", "CENTRAL INDEX KEY:",
-                                "STANDARD INDUSTRIAL CLASSIFICATION:", "STATE OF INCORPORATION:", "FISCAL YEAR END:")
-                        .readHeader("FILING VALUES:")
-                        .readOneLine("FORM TYPE:")
-                        .readOneLine("SEC ACT:")
-                        .readOneLine("SEC FILE NUMBER:")
-                        .readOneLine("FILM NUMBER:")
-                        .completeHeader()
-                        .readSection(true, "BUSINESS ADDRESS:", "STREET 1:", "STREET 2:", "CITY:", "STATE:", "ZIP:", "BUSINESS PHONE:")
-                        .readSection("MAIL ADDRESS:", "STREET 1:", "STREET 2:", "CITY:", "STATE:", "ZIP:")
-                        .readSections("FORMER NAME:", "FORMER CONFORMED NAME:", "DATE OF NAME CHANGE:");
-                track.pop();
-            } else {
-                file_lines.poll();
-                BasicDBObject issuer = new BasicDBObject();
-                issuers.add(issuer);
-                track.push(issuer);
-                this.readSection("COMPANY DATA:", "COMPANY CONFORMED NAME:", "CENTRAL INDEX KEY:",
-                                "STANDARD INDUSTRIAL CLASSIFICATION:", "IRS NUMBER:", "STATE OF INCORPORATION:", "FISCAL YEAR END:")
-                        .readSection("BUSINESS ADDRESS:", "STREET 1:", "STREET 2:", "CITY:", "STATE:", "ZIP:", "BUSINESS PHONE:")
-                        .readSection("MAIL ADDRESS:", "STREET 1:", "STREET 2:", "CITY:", "STATE:", "ZIP:")
-                        .readSections("FORMER COMPANY:", "FORMER CONFORMED NAME:", "DATE OF NAME CHANGE:");
-                track.pop();
-            }
-        }
-        track.peek().put("REPORTING-OWNER", reporting_owners);
-        track.peek().put("ISSUER:", issuers);
-        return this;
-    }
-
-    private Form4Document readXML() throws IOException, ParserConfigurationException, SAXException {
+    XMLFormDocument readXML() throws IOException, ParserConfigurationException, SAXException {
         StringBuilder xml_builder = new StringBuilder();
 
         String line;
@@ -352,7 +319,7 @@ public class Form4Document {
         return this;
     }
 
-    public static String getPrettyKey(String key) {
+    static String getPrettyKey(String key) {
         if (key.endsWith(":")) {
             return key.substring(0, key.length() - 1).trim();
         }
@@ -364,7 +331,47 @@ public class Form4Document {
         return key;
     }
 
-    public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException {
-        Form4Document.of("./data/edgar/data/1408356/0000899243-16-010872.txt").parse();
+    private final XMLFormDocument readRelatedPersons() throws IOException {
+        boolean to_be_continued = true;
+        while (to_be_continued) {
+            to_be_continued = false;
+            for (String name : getRelatedPersonNames()) {
+                if (file_lines.peek().equalsIgnoreCase(name)) {
+                    file_lines.poll();
+                    if (!track.peek().containsField(name)) {
+                        track.peek().put(name, new BasicBSONList());
+                    }
+
+                    BasicBSONList personList = (BasicBSONList) track.peek().get(name);
+                    BasicDBObject person = new BasicDBObject();
+
+                    personList.add(person);
+                    track.push(person);
+
+                    this.readSections("OWNER DATA:", "COMPANY CONFORMED NAME:", "CENTRAL INDEX KEY:",
+                                "STANDARD INDUSTRIAL CLASSIFICATION:", "STATE OF INCORPORATION:", "FISCAL YEAR END:")
+                            .readSections("COMPANY DATA:", "COMPANY CONFORMED NAME:", "CENTRAL INDEX KEY:",
+                                "STANDARD INDUSTRIAL CLASSIFICATION:", "IRS NUMBER:", "STATE OF INCORPORATION:", "FISCAL YEAR END:")
+                            .readSection(true, "FILING VALUES:", "FORM TYPE:", "SEC ACT:", "SEC FILE NUMBER:", "FILM NUMBER:")
+                            .readSection(true, "BUSINESS ADDRESS:", "STREET 1:", "STREET 2:", "CITY:", "STATE:", "ZIP:", "BUSINESS PHONE:")
+                            .readSection("MAIL ADDRESS:", "STREET 1:", "STREET 2:", "CITY:", "STATE:", "ZIP:")
+                            .readSections("FORMER NAME:", "FORMER CONFORMED NAME:", "DATE OF NAME CHANGE:")
+                            .readSections("FORMER COMPANY:", "FORMER CONFORMED NAME:", "DATE OF NAME CHANGE:");
+                    track.pop();
+                    to_be_continued = true;
+                    break;
+                }
+            }
+        }
+
+        return this;
     }
+
+    /**
+     * Abstract methods
+     */
+
+    abstract XMLFormDocument readHeaders() throws IOException;
+
+    abstract String[] getRelatedPersonNames();
 }

@@ -1,5 +1,6 @@
 package com.edgarengine;
 
+import com.edgarengine.documents.XMLFormDocument;
 import com.edgarengine.indexer.FileStatusEnum;
 import com.edgarengine.mongo.DataFileSchema;
 import com.mongodb.BasicDBObject;
@@ -47,7 +48,31 @@ public class DataFileProcessor {
                 String local_file_path = GENERIC_FILES_COLLECTOR.getLocalPath() + File.separator + file_name;
                 LOG.info(local_file_path);
 
-                BasicDBObject object = Form4Document.of(local_file_path).parse();
+                BasicDBObject object = XMLFormDocument.form4Of(local_file_path).parse();
+                object.put("_raw_file_path", local_file_path);
+                form_4_collection.insertOne(object);
+            }
+        }
+    }
+
+
+    public void processFormD() throws ParserConfigurationException, SAXException, IOException {
+        BasicDBObject filter= new BasicDBObject();
+        filter.put(DataFileSchema.FormType.field_name(), "D");
+        filter.put(FileStatusEnum.FIELD_KEY, 1);
+        FindIterable<BasicDBObject>  raw_files = data_files_collection.find(filter);
+
+        for (BasicDBObject doc : raw_files) {
+            String file_name = doc.getString(DataFileSchema.FileName.field_name());
+            if (GENERIC_FILES_COLLECTOR.sync(file_name)) {
+                BasicDBObject single_file_filter = new BasicDBObject(DataFileSchema.FileName.field_name(), file_name);
+                BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOADED.getId());
+                data_files_collection.findOneAndUpdate(single_file_filter, new BasicDBObject("$set", update));
+
+                String local_file_path = GENERIC_FILES_COLLECTOR.getLocalPath() + File.separator + file_name;
+                LOG.info(local_file_path);
+
+                BasicDBObject object = XMLFormDocument.formDOf(local_file_path).parse();
                 object.put("_raw_file_path", local_file_path);
                 form_4_collection.insertOne(object);
             }
