@@ -29,10 +29,12 @@ public class HaidesServer {
 
         new DataFileProcessor().processForm4();
 
+        System.exit(0);
+
         /**
          * 4. Generate machine readable data from Form 8- raw text files
          */
 
-        new DataFileProcessor().processFormD();
+//        new DataFileProcessor().processFormD();
     }
 }

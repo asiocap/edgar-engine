@@ -39,20 +39,29 @@ public class DataFileProcessor {
         FindIterable<BasicDBObject>  raw_files = data_files_collection.find(filter);
 
         for (BasicDBObject doc : raw_files) {
-            String file_name = doc.getString(DataFileSchema.FileName.field_name());
-            if (GENERIC_FILES_COLLECTOR.sync(file_name)) {
-                BasicDBObject single_file_filter = new BasicDBObject(DataFileSchema.FileName.field_name(), file_name);
-                BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOADED.getId());
-                data_files_collection.findOneAndUpdate(single_file_filter, new BasicDBObject("$set", update));
-
-                String local_file_path = GENERIC_FILES_COLLECTOR.getLocalPath() + File.separator + file_name;
-                LOG.info(local_file_path);
-
-                BasicDBObject object = XMLFormDocument.form4Of(local_file_path).parse();
-                object.put("_raw_file_path", local_file_path);
-                form_4_collection.insertOne(object);
-            }
+            processForm4(doc.getString(DataFileSchema.FileName.field_name()));
         }
+    }
+
+    private void processForm4(String file_name) throws ParserConfigurationException, SAXException, IOException {
+        if (!GENERIC_FILES_COLLECTOR.sync(file_name)) {
+            LOG.severe(String.format("Failed to sync file %s!", file_name));
+            return;
+        }
+
+        // Tag this file as downloaded in DB
+        BasicDBObject single_file_filter = new BasicDBObject(DataFileSchema.FileName.field_name(), file_name);
+        BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOADED.getId());
+        data_files_collection.findOneAndUpdate(single_file_filter, new BasicDBObject("$set", update));
+
+
+        String local_file_path = GENERIC_FILES_COLLECTOR.getLocalPath() + File.separator + file_name;
+
+        LOG.info(String.format("Start processing Form 4 data file %s", local_file_path));
+
+        BasicDBObject object = XMLFormDocument.form4Of(local_file_path).parse();
+        object.put("_raw_file_path", local_file_path);
+        form_4_collection.insertOne(object);
     }
 
 
@@ -81,6 +90,6 @@ public class DataFileProcessor {
 
     public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
         DataFileProcessor p = new DataFileProcessor();
-        p.processForm4();
+        p.processForm4("edgar/data/1447935/16/000100307816000148/0001003078-16-000148.txt");
     }
 }
