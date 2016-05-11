@@ -1,11 +1,6 @@
 package com.edgarengine.documents;
 
-import com.mongodb.BasicDBObject;
-import org.bson.BSONObject;
-import org.bson.BsonArray;
-import org.bson.BsonDocument;
-import org.bson.BsonString;
-import org.bson.types.BasicBSONList;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.XML;
 import org.xml.sax.SAXException;
@@ -25,8 +20,8 @@ import java.util.logging.Logger;
 public abstract class XMLFormDocument {
     private static Logger LOG = Logger.getLogger(XMLFormDocument.class.getCanonicalName());
     private String file_path;
-    private BasicDBObject mongo_doc;
-    private Stack<BasicDBObject> track;
+    private JSONObject json_doc;
+    private Stack<JSONObject> track;
     private LinkedList<String> file_lines;
     private int number_of_documents;
 
@@ -42,18 +37,17 @@ public abstract class XMLFormDocument {
         return instance;
     }
 
-
     /**
      * Public methods
      */
 
-    public BasicDBObject parse() throws IOException, ParserConfigurationException, SAXException {
-        track = new Stack<BasicDBObject>();
-        mongo_doc = new BasicDBObject();
+    public JSONObject parse() throws IOException, ParserConfigurationException, SAXException {
+        track = new Stack<JSONObject>();
+        json_doc = new JSONObject();
         file_lines = new LinkedList<String>();
         number_of_documents = 0;
 
-        track.push(mongo_doc);
+        track.push(json_doc);
         BufferedReader br = new BufferedReader(new FileReader(file_path));
         String line;
         while ((line = br.readLine()) != null) {
@@ -84,7 +78,7 @@ public abstract class XMLFormDocument {
         this.file_path = file_path;
     }
 
-    BasicDBObject done() throws IOException {
+    JSONObject done() throws IOException {
         if (track.size() != 1) {
             LOG.severe(String.format("Form 4 format exception: unfinished stack in file %s!!", this.file_path));
             throw new UnsupportedEncodingException();
@@ -94,7 +88,8 @@ public abstract class XMLFormDocument {
             throw new UnsupportedEncodingException();
         }
 
-        return mongo_doc;
+        json_doc.put("_raw_file_path", file_path);
+        return json_doc;
     }
 
     final XMLFormDocument readOneLine(String key) throws IOException {
@@ -118,7 +113,7 @@ public abstract class XMLFormDocument {
                 throw new UnsupportedEncodingException();
             }
         } else {
-            track.peek().put(pretty_key, new BsonString(line.substring(key.length()).trim()));
+            track.peek().put(pretty_key, line.substring(key.length()).trim());
             file_lines.poll();
         }
         return this;
@@ -129,17 +124,17 @@ public abstract class XMLFormDocument {
         pretty_key = getPrettyKey(key);
 
         String line;
-        BasicBSONList values = new BasicBSONList();
+        JSONArray values = new JSONArray();
         while ((line = file_lines.peek()) != null) {
             if (line.startsWith(key)) {
-                values.add(line.substring(key.length()).trim());
+                values.put(line.substring(key.length()).trim());
                 file_lines.poll();
             } else {
                 break;
             }
         }
 
-        if (values.size() > 0) {
+        if (values.length() > 0) {
             track.peek().put(pretty_key, values);
         }
         return this;
@@ -150,12 +145,12 @@ public abstract class XMLFormDocument {
     }
 
     XMLFormDocument readSections(String header, String... keys) throws UnsupportedEncodingException {
-        BsonArray sections_array = new BsonArray();
+        JSONArray sections_array = new JSONArray();
         while (file_lines.peek().equalsIgnoreCase(header)) {
             file_lines.poll();
 
-            BsonDocument section = new BsonDocument();
-            sections_array.add(section);
+            JSONObject section = new JSONObject();
+            sections_array.put(section);
 
             // Keys
             for (String key : keys) {
@@ -163,12 +158,12 @@ public abstract class XMLFormDocument {
                     continue;
                 }
                 String pretty_key = getPrettyKey(key);
-                section.put(pretty_key, new BsonString(file_lines.poll().substring(key.length()).trim()));
+                section.put(pretty_key, file_lines.poll().substring(key.length()).trim());
             }
-            sections_array.add(section);
+            sections_array.put(section);
         }
 
-        if (sections_array.size() > 0) {
+        if (sections_array.length() > 0) {
             track.peek().put(getPrettyKey(header), sections_array);
         }
         return this;
@@ -200,7 +195,7 @@ public abstract class XMLFormDocument {
         if (!strict_key) {
             header = getPrettyKey(header);
         }
-        BsonDocument section = new BsonDocument();
+        JSONObject section = new JSONObject();
         track.peek().put(header, section);
 
         // Keys
@@ -212,7 +207,7 @@ public abstract class XMLFormDocument {
             if (!strict_key) {
                 pretty_key = getPrettyKey(key);
             }
-            section.put(pretty_key, new BsonString(file_lines.poll().substring(key.length()).trim()));
+            section.put(pretty_key, file_lines.poll().substring(key.length()).trim());
         }
 
         return this;
@@ -264,12 +259,12 @@ public abstract class XMLFormDocument {
         }
 
         file_lines.poll();
-        if (!track.peek().containsField("DOCUMENT")) {
-            track.peek().put("DOCUMENT", new BasicBSONList());
+        if (!track.peek().has("DOCUMENT")) {
+            track.peek().put("DOCUMENT", new JSONArray());
         }
 
-        BasicDBObject document = new BasicDBObject();
-        ((BasicBSONList)(track.peek().get("DOCUMENT"))).add(document);
+        JSONObject document = new JSONObject();
+        ((JSONArray)(track.peek().get("DOCUMENT"))).put(document);
         track.push(document);
 
         this.ignoreKey("<TYPE>")
@@ -285,7 +280,7 @@ public abstract class XMLFormDocument {
             while(!file_lines.peek().equalsIgnoreCase("</TEXT>")) {
                 text_content_builder.append(file_lines.poll()).append("\n");
             }
-            document.put("TEXT", new BsonString(text_content_builder.toString()));
+            document.put("TEXT", text_content_builder.toString());
         }
 
         this.ignoreKey("</TEXT>")
@@ -313,8 +308,7 @@ public abstract class XMLFormDocument {
 
         }
         JSONObject json_object = XML.toJSONObject(xml_builder.toString());
-        BSONObject bson_xml = (BSONObject)com.mongodb.util.JSON.parse(json_object.toString());
-        track.peek().put("XML", bson_xml);
+        track.peek().put("XML", json_object);
 
         return this;
     }
@@ -338,14 +332,14 @@ public abstract class XMLFormDocument {
             for (String name : getRelatedPersonNames()) {
                 if (file_lines.peek().equalsIgnoreCase(name)) {
                     file_lines.poll();
-                    if (!track.peek().containsField(name)) {
-                        track.peek().put(name, new BasicBSONList());
+                    if (!track.peek().has(name)) {
+                        track.peek().put(name, new JSONArray());
                     }
 
-                    BasicBSONList personList = (BasicBSONList) track.peek().get(name);
-                    BasicDBObject person = new BasicDBObject();
+                    JSONArray personList = (JSONArray) track.peek().get(name);
+                    JSONObject person = new JSONObject();
 
-                    personList.add(person);
+                    personList.put(person);
                     track.push(person);
 
                     this.readSections("OWNER DATA:", "COMPANY CONFORMED NAME:", "CENTRAL INDEX KEY:",

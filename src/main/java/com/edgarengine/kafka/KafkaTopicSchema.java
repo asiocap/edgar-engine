@@ -1,7 +1,5 @@
 package com.edgarengine.kafka;
 
-import com.edgarengine.Form4Object;
-
 /**
  * Created by jinchengchen on 5/10/16.
  */

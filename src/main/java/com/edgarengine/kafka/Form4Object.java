@@ -1,10 +1,9 @@
-package com.edgarengine;
+package com.edgarengine.kafka;
 
-import com.facebook.swift.codec.ThriftCodec;
-import com.facebook.swift.codec.ThriftCodecManager;
+import java.util.*;
+
 import com.facebook.swift.codec.ThriftField;
 import com.facebook.swift.codec.ThriftStruct;
-import com.facebook.swift.codec.internal.coercion.DefaultJavaCoercions;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -12,14 +11,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.Serializer;
-import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
-
-import java.io.ByteArrayOutputStream;
-import java.util.*;
+import org.json.JSONObject;
 
 /**
  * Created by jinchengchen on 5/6/16.
@@ -35,7 +27,14 @@ public class Form4Object {
         return new Form4Object(object_id);
     }
 
+    // For Thrift deserialization purpose
     public Form4Object() {}
+
+    public Form4Object(JSONObject object) {
+        objectId = object.getString("_raw_file_path");
+        accessNumber = object.getString("ACCESSION NUMBER");
+        filedOfDate = object.getString("FILED AS OF DATE");
+    }
 
     private Form4Object(String objectId) {
         this.objectId = objectId;
@@ -71,31 +70,7 @@ public class Form4Object {
         this.filedOfDate = filedOfDate;
     }
 
-    static void produce() {
-        // Kafka producer
-        Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:9092");
-        props.put("acks", "all");
-        props.put("retries", 0);
-        props.put("batch.size", 16384);
-        props.put("linger.ms", 1);
-        props.put("buffer.memory", 33554432);
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "com.edgarengine.kafka.SwiftSerializer");
-
-        Producer<String, Form4Object> producer = new KafkaProducer<>(props);
-        for(int i = 0; i < 10; i++) {
-            System.out.println(i);
-            Form4Object data = new Form4Object(Integer.toString(i));
-            data.accessNumber = "te1st, test";
-
-            producer.send(new ProducerRecord<String, Form4Object>("form4-1", Integer.toString(i), data));
-        }
-
-        producer.close();
-    }
-
-    static void consume() {
+    public static void main(String[] args) {
         Properties props = new Properties();
         props.put("bootstrap.servers", "localhost:9092");
         props.put("group.id", "test");
@@ -115,7 +90,9 @@ public class Form4Object {
         while (true) {
             ConsumerRecords<String, Form4Object> records = consumer.poll(100);
             for (ConsumerRecord<String, Form4Object> record : records) {
-                System.out.printf("counter = %s, offset = %s, key = %s, value = %s\n", counter, record.offset(), record.key(), record.value().accessNumber);
+                System.out.printf("counter = %s, offset = %s, key = %s, objectId = %s, filedOfDate = %s accessNumber = %s\n",
+                        counter, record.offset(), record.key(), record.value().objectId, record.value().filedOfDate,
+                        record.value().accessNumber);
                 counter++;
                 buffer.add(record);
             }
