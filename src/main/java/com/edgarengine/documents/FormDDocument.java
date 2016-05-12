@@ -10,7 +10,10 @@ import java.io.IOException;
  */
 public class FormDDocument extends XMLFormDocument {
     static final String[] RELATED_PERSON_NAMES = new String[] {"FILER:"};
-    FormDDocument() {}
+
+    FormDDocument(String company_name, String cik, String file_path) {
+        super(company_name, cik, file_path);
+    }
 
     XMLFormDocument readHeaders() throws IOException {
         return this.readLines("ITEM INFORMATION:")
@@ -24,6 +27,6 @@ public class FormDDocument extends XMLFormDocument {
     }
 
     public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException {
-        XMLFormDocument.formDOf("./data/edgar/data/1616646/0001209191-16-088336.txt").parse();
+        XMLFormDocument.formDOf("Company Name", "1616646", "./data/edgar/data/1616646/0001209191-16-088336.txt").parse();
     }
 }

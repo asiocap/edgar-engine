@@ -1,4 +1,4 @@
-package com.edgarengine;
+package com.edgarengine.documents;
 
 /**
  * Created by jinchengchen on 4/29/16.

@@ -1,4 +1,4 @@
-package com.edgarengine;
+package com.edgarengine.service;
 
 import com.edgarengine.dao.Form4MongoDao;
 import com.edgarengine.documents.XMLFormDocument;
@@ -52,20 +52,21 @@ public class DataFileProcessor {
         produceerProps.put("buffer.memory", 33554432);
         produceerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         produceerProps.put("value.serializer", "com.edgarengine.kafka.SwiftSerializer");
+        produceerProps.put("partitioner.class", "com.edgarengine.kafka.CompanyPartitioner");
     }
 
     public void processForm4() throws ParserConfigurationException, SAXException, IOException {
         BasicDBObject filter= new BasicDBObject();
         filter.put(DataFileSchema.FormType.field_name(), "4");
         filter.put(FileStatusEnum.FIELD_KEY, 1);
-        FindIterable<BasicDBObject>  raw_files = data_files_collection.find(filter);
+        FindIterable<BasicDBObject> raw_files = data_files_collection.find(filter);
 
         for (BasicDBObject doc : raw_files) {
-            processForm4(doc.getString(DataFileSchema.FileName.field_name()));
+            processForm4(doc.getString("Company Name"), doc.getString("CIK"), doc.getString(DataFileSchema.FileName.field_name()));
         }
     }
 
-    private void processForm4(String file_name) throws ParserConfigurationException, SAXException, IOException {
+    private void processForm4(String company_name, String cik, String file_name) throws ParserConfigurationException, SAXException, IOException {
         // Download it from FTP server if haven't done yet
         if (!GENERIC_FILES_COLLECTOR.sync(file_name)) {
             LOG.severe(String.format("Failed to sync file %s!", file_name));
@@ -81,7 +82,7 @@ public class DataFileProcessor {
         LOG.info(String.format("Start processing Form 4 data file %s", local_file_path));
 
         // Generate Json Object for general useage
-        JSONObject json_object = XMLFormDocument.form4Of(local_file_path).parse();
+        JSONObject json_object = XMLFormDocument.form4Of(company_name, cik, local_file_path).parse();
 
         // Store in Mongo DB
         form4MongoDao.create(json_object);
@@ -101,6 +102,8 @@ public class DataFileProcessor {
 
         for (BasicDBObject doc : raw_files) {
             String file_name = doc.getString(DataFileSchema.FileName.field_name());
+            String company_name = doc.getString("Company Name");
+            String cik = doc.getString("CIK");
             if (GENERIC_FILES_COLLECTOR.sync(file_name)) {
                 BasicDBObject single_file_filter = new BasicDBObject(DataFileSchema.FileName.field_name(), file_name);
                 BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOADED.getId());
@@ -109,7 +112,7 @@ public class DataFileProcessor {
                 String local_file_path = GENERIC_FILES_COLLECTOR.getLocalPath() + File.separator + file_name;
                 LOG.info(local_file_path);
 
-                JSONObject json_object = XMLFormDocument.formDOf(local_file_path).parse();
+                JSONObject json_object = XMLFormDocument.formDOf(company_name, cik, local_file_path).parse();
                 formDMongoDao.create(json_object);
             }
         }
@@ -125,6 +128,6 @@ public class DataFileProcessor {
 
     public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
         DataFileProcessor p = new DataFileProcessor();
-        p.processForm4("edgar/data/1447935/16/000100307816000148/0001003078-16-000148.txt");
+        p.processForm4("Company Name", "1447935", "edgar/data/1447935/16/000100307816000148/0001003078-16-000148.txt");
     }
 }

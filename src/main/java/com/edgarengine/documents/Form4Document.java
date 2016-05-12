@@ -10,7 +10,10 @@ import org.xml.sax.SAXException;
  */
 public class Form4Document extends XMLFormDocument {
     static final String[] RELATED_PERSON_NAMES = new String[] {"REPORTING-OWNER:", "ISSUER:"};
-    Form4Document() {}
+
+    Form4Document(String company_name, String cik, String file_path) {
+        super(company_name, cik, file_path);
+    }
 
     XMLFormDocument readHeaders() throws IOException {
         return this.readOneLine(true, "CONFORMED PERIOD OF REPORT:")
@@ -23,6 +26,6 @@ public class Form4Document extends XMLFormDocument {
     }
 
     public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException {
-        XMLFormDocument.form4Of("./data/edgar/data/1393726/0001209191-16-089311.txt").parse();
+        XMLFormDocument.form4Of("Company Name", "1393726", "./data/edgar/data/1393726/0001209191-16-089311.txt").parse();
     }
 }

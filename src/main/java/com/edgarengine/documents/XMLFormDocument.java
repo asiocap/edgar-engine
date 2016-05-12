@@ -20,20 +20,25 @@ import java.util.logging.Logger;
 public abstract class XMLFormDocument {
     private static Logger LOG = Logger.getLogger(XMLFormDocument.class.getCanonicalName());
     private String file_path;
+    private String company_name;
+    private String cik;
     private JSONObject json_doc;
     private Stack<JSONObject> track;
     private LinkedList<String> file_lines;
     private int number_of_documents;
 
-    public static Form4Document form4Of(String file_path) {
-        Form4Document instance = new Form4Document();
-        instance.setFilePath(file_path);
-        return instance;
+    XMLFormDocument(String company_name, String cik, String file_path) {
+        this.company_name = company_name;
+        this.cik = cik;
+        this.file_path = file_path;
     }
 
-    public static FormDDocument formDOf(String file_path) {
-        FormDDocument instance = new FormDDocument();
-        instance.setFilePath(file_path);
+    public static Form4Document form4Of(String company_name, String cik, String file_path) {
+        return new Form4Document(company_name, cik, file_path);
+    }
+
+    public static FormDDocument formDOf(String company_name, String cik, String file_path) {
+        FormDDocument instance = new FormDDocument(company_name, cik, file_path);
         return instance;
     }
 
@@ -74,10 +79,6 @@ public abstract class XMLFormDocument {
      * Common methods
      */
 
-    void setFilePath(String file_path) {
-        this.file_path = file_path;
-    }
-
     JSONObject done() throws IOException {
         if (track.size() != 1) {
             LOG.severe(String.format("Form 4 format exception: unfinished stack in file %s!!", this.file_path));
@@ -89,6 +90,8 @@ public abstract class XMLFormDocument {
         }
 
         json_doc.put("_raw_file_path", file_path);
+        json_doc.put("Company Name", company_name);
+        json_doc.put("CIK", cik);
         return json_doc;
     }
 

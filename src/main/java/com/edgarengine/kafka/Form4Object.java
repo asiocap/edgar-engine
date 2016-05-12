@@ -7,9 +7,6 @@ import com.facebook.swift.codec.ThriftStruct;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.json.JSONObject;
 
@@ -17,42 +14,30 @@ import org.json.JSONObject;
  * Created by jinchengchen on 5/6/16.
  */
 @ThriftStruct
-public class Form4Object {
+public class Form4Object implements CompanyIndexed {
+
+    private String companyName;
+    private long cik;
 
     private String objectId;
-    private String accessNumber = "1234";
-    private String filedOfDate = "20160505";
-
-    public static Form4Object of(String object_id) {
-        return new Form4Object(object_id);
-    }
+    private String accessNumber;
+    private String filedOfDate;
 
     // For Thrift deserialization purpose
     public Form4Object() {}
 
     public Form4Object(JSONObject object) {
+        companyName = object.getString("Company Name");
+        cik = object.getLong("CIK");
+
         objectId = object.getString("_raw_file_path");
         accessNumber = object.getString("ACCESSION NUMBER");
         filedOfDate = object.getString("FILED AS OF DATE");
     }
 
-    private Form4Object(String objectId) {
-        this.objectId = objectId;
-    }
-
     @ThriftField(1)
     public String getObjectId() {
         return objectId;
-    }
-
-    @ThriftField(2)
-    public String getAccessNumber() {
-        return accessNumber;
-    }
-
-    @ThriftField(3)
-    public String getFiledOfDate() {
-        return filedOfDate;
     }
 
     @ThriftField(1)
@@ -61,8 +46,18 @@ public class Form4Object {
     }
 
     @ThriftField(2)
+    public String getAccessNumber() {
+        return accessNumber;
+    }
+
+    @ThriftField(2)
     public void setAccessNumber(String accessNumber) {
         this.accessNumber = accessNumber;
+    }
+
+    @ThriftField(3)
+    public String getFiledOfDate() {
+        return filedOfDate;
     }
 
     @ThriftField(3)
@@ -70,6 +65,31 @@ public class Form4Object {
         this.filedOfDate = filedOfDate;
     }
 
+    @Override
+    @ThriftField(4)
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    @ThriftField(4)
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
+    @Override
+    @ThriftField(5)
+    public long getCIK() {
+        return cik;
+    }
+
+    @ThriftField(5)
+    public void setCIK(long cik) {
+        this.cik = cik;
+    }
+
+    /**
+     * Test Kafka consumer
+     */
     public static void main(String[] args) {
         Properties props = new Properties();
         props.put("bootstrap.servers", "localhost:9092");
@@ -82,9 +102,14 @@ public class Form4Object {
         KafkaConsumer<String, Form4Object> consumer = new KafkaConsumer<>(props);
 
 
-        TopicPartition partition0 = new TopicPartition("form4-1", 0);
-        consumer.assign(Arrays.asList(partition0));
-        consumer.seekToBeginning(partition0);
+        TopicPartition[] partitions = new TopicPartition[1000];
+        for (int p = 0; p < 1000; p++) {
+            partitions[p] = new TopicPartition("form4-1", p);
+        }
+
+        consumer.assign(Arrays.asList(partitions));
+        consumer.seekToBeginning(partitions);
+
         List<ConsumerRecord<String, Form4Object>> buffer = new ArrayList<>();
         int counter = 0;
         while (true) {

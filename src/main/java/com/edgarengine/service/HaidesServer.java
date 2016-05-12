@@ -1,6 +1,5 @@
 package com.edgarengine.service;
 
-import com.edgarengine.DataFileProcessor;
 import com.edgarengine.indexer.CompanyIndexProcessor;
 import org.xml.sax.SAXException;
 
