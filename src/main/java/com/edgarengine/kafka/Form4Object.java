@@ -10,81 +10,63 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.json.JSONObject;
 
+import static com.edgarengine.mongo.DataFileSchema.*;
+
 /**
- * Created by jinchengchen on 5/6/16.
+ * <p>
+ * Thrift annotated POJO to represent Form 4.
+ * </p>
+ *
+ * @author Jincheng Chen
  */
 @ThriftStruct
 public class Form4Object implements CompanyIndexed {
 
-    private String companyName;
-    private long cik;
+    @ThriftField(4)
+    public String companyName;
 
-    private String objectId;
-    private String accessNumber;
-    private String filedOfDate;
+    @ThriftField(5)
+    public long cik;
+
+    @ThriftField(1)
+    public String objectId;
+
+    @ThriftField(2)
+    public String accessNumber;
+
+    @ThriftField(3)
+    public String filedOfDate;
+
+    @ThriftField(6)
+    public String dateOfChange;
+
+
+
 
     // For Thrift deserialization purpose
     public Form4Object() {}
 
     public Form4Object(JSONObject object) {
-        companyName = object.getString("Company Name");
-        cik = object.getLong("CIK");
+        companyName = object.getString(CompanyName.field_name());
+        cik = object.getLong(CIK.field_name());
 
-        objectId = object.getString("_raw_file_path");
-        accessNumber = object.getString("ACCESSION NUMBER");
-        filedOfDate = object.getString("FILED AS OF DATE");
-    }
-
-    @ThriftField(1)
-    public String getObjectId() {
-        return objectId;
-    }
-
-    @ThriftField(1)
-    public void setObjectId(String objectId) {
-        this.objectId = objectId;
-    }
-
-    @ThriftField(2)
-    public String getAccessNumber() {
-        return accessNumber;
-    }
-
-    @ThriftField(2)
-    public void setAccessNumber(String accessNumber) {
-        this.accessNumber = accessNumber;
-    }
-
-    @ThriftField(3)
-    public String getFiledOfDate() {
-        return filedOfDate;
-    }
-
-    @ThriftField(3)
-    public void setFiledOfDate(String filedOfDate) {
-        this.filedOfDate = filedOfDate;
+        objectId = object.getString(_raw_file_path.field_name());
+        accessNumber = object.getString(AccessionNumber.field_name());
+        filedOfDate = object.getString(FiledAsOfDate.field_name());
     }
 
     @Override
-    @ThriftField(4)
     public String getCompanyName() {
         return companyName;
     }
 
-    @ThriftField(4)
-    public void setCompanyName(String companyName) {
-        this.companyName = companyName;
-    }
-
     @Override
-    @ThriftField(5)
     public long getCIK() {
         return cik;
     }
 
-    @ThriftField(5)
-    public void setCIK(long cik) {
-        this.cik = cik;
+    public String getObjectId() {
+        return objectId;
     }
 
     /**

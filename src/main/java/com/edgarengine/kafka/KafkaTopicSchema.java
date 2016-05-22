@@ -1,9 +1,19 @@
 package com.edgarengine.kafka;
 
 /**
- * Created by jinchengchen on 5/10/16.
+ * <p>
+ * Define the mapping from topic prefix to serializable data structure,
+ * so that kafka client knows how data should be de-serialized.
+ * </p>
+ *
+ * @author Jincheng Chen
+ * @see SwiftSerializer
+ * @see SwiftDeserializer
  */
 public enum KafkaTopicSchema {
+    /**
+     * Form 4 topics all start with "form4-".
+     */
     Form4("form4-", Form4Object.class),
 
     ;

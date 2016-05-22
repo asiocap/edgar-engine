@@ -1,5 +1,6 @@
 package com.edgarengine.indexer;
 
+import com.edgarengine.mongo.DataFileSchema;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -11,6 +12,7 @@ import java.io.*;
 import java.util.Date;
 import java.util.logging.Logger;
 
+import static com.edgarengine.mongo.DataFileSchema.*;
 import static com.edgarengine.service.RawDataCollector.INDEX_FILES_COLLECTOR;
 
 /**
@@ -141,15 +143,15 @@ public class CompanyIndexProcessor {
 
 
             BasicDBObject doc = new BasicDBObject();
-            doc.put("Company Name", company_name);
-            doc.put("Form Type", form_type);
-            doc.put("CIK", cik);
-            doc.put("Date Filed", date_filed);
-            doc.put("File Name", file_name);
+            doc.put(CompanyName.field_name(), company_name);
+            doc.put(FormType.field_name(), form_type);
+            doc.put(CIK.field_name(), cik);
+            doc.put(DateFiled.field_name(), date_filed);
+            doc.put(FileName.field_name(), file_name);
 
             doc.put(FileStatusEnum.FIELD_KEY, FileStatusEnum.INITIALIZED.getId());
-            doc.put("_create_time_stamp", System.currentTimeMillis());
-            doc.put("_index_file", file.getName());
+            doc.put(_create_time_stamp.field_name(), System.currentTimeMillis());
+            doc.put(_index_file.field_name(), file.getName());
             data_files_collection.insertOne(doc);
         }
         return true;

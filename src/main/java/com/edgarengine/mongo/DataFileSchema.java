@@ -12,8 +12,12 @@ public enum DataFileSchema {
     DateFiled("Date Filed"),
     FileName("File Name"),
     FileStatus(FileStatusEnum.FIELD_KEY),
+    AccessionNumber("ACCESSION NUMBER"),
+    FiledAsOfDate("FILED AS OF DATE"),
+
     _create_time_stamp("_create_time_stamp"),
     _index_file("_index_file"),
+    _raw_file_path("_raw_file_path"),
 
     ;
 

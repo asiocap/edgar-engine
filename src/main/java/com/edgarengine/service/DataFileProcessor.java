@@ -13,6 +13,7 @@ import com.mongodb.client.MongoDatabase;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.xml.sax.SAXException;
 
@@ -22,6 +23,9 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import static com.edgarengine.mongo.DataFileSchema.CIK;
+import static com.edgarengine.mongo.DataFileSchema.CompanyName;
+import static com.edgarengine.mongo.DataFileSchema.FileName;
 import static com.edgarengine.service.RawDataCollector.GENERIC_FILES_COLLECTOR;
 
 /**
@@ -31,8 +35,9 @@ public class DataFileProcessor {
     private static Logger LOG = Logger.getLogger(DataFileProcessor.class.getCanonicalName());
 
     private final MongoCollection<BasicDBObject> data_files_collection;
+    private final MongoCollection<BasicDBObject> data_schemas_collection;
     private final Form4MongoDao form4MongoDao = new Form4MongoDao();
-    private final Properties produceerProps = new Properties();
+    private final Properties producerProps = new Properties();
     private Producer<String, Form4Object> producer;
 
     // TODO : temporary
@@ -42,17 +47,18 @@ public class DataFileProcessor {
         MongoClient mongoClient = new MongoClient("localhost" , 27017);
         MongoDatabase database = mongoClient.getDatabase("haides");
         data_files_collection = database.getCollection("data_files", BasicDBObject.class);
+        data_schemas_collection = database.getCollection("data_schemas", BasicDBObject.class);
 
         // Kafka producer
-        produceerProps.put("bootstrap.servers", "localhost:9092");
-        produceerProps.put("acks", "all");
-        produceerProps.put("retries", 0);
-        produceerProps.put("batch.size", 16384);
-        produceerProps.put("linger.ms", 1);
-        produceerProps.put("buffer.memory", 33554432);
-        produceerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        produceerProps.put("value.serializer", "com.edgarengine.kafka.SwiftSerializer");
-        produceerProps.put("partitioner.class", "com.edgarengine.kafka.CompanyPartitioner");
+        producerProps.put("bootstrap.servers", "localhost:9092");
+        producerProps.put("acks", "all");
+        producerProps.put("retries", 0);
+        producerProps.put("batch.size", 16384);
+        producerProps.put("linger.ms", 1);
+        producerProps.put("buffer.memory", 33554432);
+        producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put("value.serializer", "com.edgarengine.kafka.SwiftSerializer");
+        producerProps.put("partitioner.class", "com.edgarengine.kafka.CompanyPartitioner");
     }
 
     public void processForm4() throws ParserConfigurationException, SAXException, IOException {
@@ -62,7 +68,7 @@ public class DataFileProcessor {
         FindIterable<BasicDBObject> raw_files = data_files_collection.find(filter);
 
         for (BasicDBObject doc : raw_files) {
-            processForm4(doc.getString("Company Name"), doc.getString("CIK"), doc.getString(DataFileSchema.FileName.field_name()));
+            processForm4(doc.getString(CompanyName.field_name()), doc.getString(CIK.field_name()), doc.getString(FileName.field_name()));
         }
     }
 
@@ -74,7 +80,7 @@ public class DataFileProcessor {
         }
 
         // Tag this file as downloaded in DB
-        BasicDBObject single_file_filter = new BasicDBObject(DataFileSchema.FileName.field_name(), file_name);
+        BasicDBObject single_file_filter = new BasicDBObject(FileName.field_name(), file_name);
         BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOADED.getId());
         data_files_collection.findOneAndUpdate(single_file_filter, new BasicDBObject("$set", update));
 
@@ -86,6 +92,17 @@ public class DataFileProcessor {
 
         // Store in Mongo DB
         form4MongoDao.create(json_object);
+
+        // Update Data Schema
+        BasicDBObject schema = data_schemas_collection.find(new BasicDBObject("_type_", "form4")).first();
+        if (schema == null) {
+            schema = new BasicDBObject("_type_", "form4");
+        }
+
+        if (updateSchema(schema, json_object, "schema")) {
+            data_schemas_collection.findOneAndDelete(new BasicDBObject("_type_", "form4"));
+            data_schemas_collection.insertOne(schema);
+        }
 
         // Send it to Kafka
         Form4Object serializableObject = new Form4Object(json_object);
@@ -101,11 +118,11 @@ public class DataFileProcessor {
         FindIterable<BasicDBObject>  raw_files = data_files_collection.find(filter);
 
         for (BasicDBObject doc : raw_files) {
-            String file_name = doc.getString(DataFileSchema.FileName.field_name());
-            String company_name = doc.getString("Company Name");
-            String cik = doc.getString("CIK");
+            String file_name = doc.getString(FileName.field_name());
+            String company_name = doc.getString(CompanyName.field_name());
+            String cik = doc.getString(CIK.field_name());
             if (GENERIC_FILES_COLLECTOR.sync(file_name)) {
-                BasicDBObject single_file_filter = new BasicDBObject(DataFileSchema.FileName.field_name(), file_name);
+                BasicDBObject single_file_filter = new BasicDBObject(FileName.field_name(), file_name);
                 BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOADED.getId());
                 data_files_collection.findOneAndUpdate(single_file_filter, new BasicDBObject("$set", update));
 
@@ -120,10 +137,33 @@ public class DataFileProcessor {
 
     public Producer getProducer() {
         if (producer == null) {
-            producer = new KafkaProducer<>(produceerProps);
+            producer = new KafkaProducer<>(producerProps);
         }
 
         return producer;
+    }
+
+    public static boolean updateSchema(BasicDBObject schema, JSONObject data, String name) {
+        boolean updated = false;
+        if (!schema.containsField(name) || schema.get(name) instanceof String) {
+            schema.put(name, new BasicDBObject());
+        }
+        BasicDBObject set = (BasicDBObject) schema.get(name);
+
+        for (String key : data.keySet()) {
+            Object node = data.get(key);
+            if (node instanceof JSONObject) {
+                updateSchema(set, (JSONObject) node, key);
+            } else if (node instanceof JSONArray) {
+                for(int i = 0; i < ((JSONArray) node).length(); i++) {
+                    updateSchema(set, (JSONObject) ((JSONArray) node).get(i), key);
+                }
+            } else if (!set.containsField(key)) {
+                set.put(key, node.getClass().getCanonicalName());
+                updated = true;
+            }
+        }
+        return updated;
     }
 
     public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {

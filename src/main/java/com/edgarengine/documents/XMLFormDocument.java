@@ -14,6 +14,10 @@ import java.util.LinkedList;
 import java.util.Stack;
 import java.util.logging.Logger;
 
+import static com.edgarengine.mongo.DataFileSchema.CIK;
+import static com.edgarengine.mongo.DataFileSchema.CompanyName;
+import static com.edgarengine.mongo.DataFileSchema._raw_file_path;
+
 /**
  * Created by jinchengchen on 5/5/16.
  */
@@ -89,9 +93,9 @@ public abstract class XMLFormDocument {
             throw new UnsupportedEncodingException();
         }
 
-        json_doc.put("_raw_file_path", file_path);
-        json_doc.put("Company Name", company_name);
-        json_doc.put("CIK", cik);
+        json_doc.put(_raw_file_path.field_name(), file_path);
+        json_doc.put(CompanyName.field_name(), company_name);
+        json_doc.put(CIK.field_name(), cik);
         return json_doc;
     }
 
@@ -334,12 +338,13 @@ public abstract class XMLFormDocument {
             to_be_continued = false;
             for (String name : getRelatedPersonNames()) {
                 if (file_lines.peek().equalsIgnoreCase(name)) {
+                    String prettyName = getPrettyKey(name);
                     file_lines.poll();
-                    if (!track.peek().has(name)) {
-                        track.peek().put(name, new JSONArray());
+                    if (!track.peek().has(prettyName)) {
+                        track.peek().put(prettyName, new JSONArray());
                     }
 
-                    JSONArray personList = (JSONArray) track.peek().get(name);
+                    JSONArray personList = (JSONArray) track.peek().get(prettyName);
                     JSONObject person = new JSONObject();
 
                     personList.put(person);

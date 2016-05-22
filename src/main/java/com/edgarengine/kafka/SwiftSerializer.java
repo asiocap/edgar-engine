@@ -10,7 +10,12 @@ import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
 /**
- * Created by jinchengchen on 5/8/16.
+ * <p>
+ * Customized Kafka serializer.
+ * </p>
+ *
+ * @author Jincheng Chen
+ * @see SwiftDeserializer
  */
 public class SwiftSerializer implements Serializer {
     private static final ThriftCodecManager codecManager = new ThriftCodecManager();

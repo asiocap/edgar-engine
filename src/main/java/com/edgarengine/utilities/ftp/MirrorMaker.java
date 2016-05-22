@@ -35,7 +35,7 @@ public class MirrorMaker {
             public void run() {
                 semaphore.release();
             }
-        }, 0l, 2000l);
+        }, 0l, 4000l);
     }
 
     public boolean replicateFile(String file_path, boolean is_soft) {

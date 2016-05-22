@@ -8,7 +8,12 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import java.util.Map;
 
 /**
- * Created by jinchengchen on 5/10/16.
+ * <p>
+ * Customized Kafka deserializer.
+ * </p>
+ *
+ * @author Jincheng Chen
+ * @see SwiftDeserializer
  */
 public class SwiftDeserializer implements Deserializer {
     private static final ThriftCodecManager codecManager = new ThriftCodecManager();
