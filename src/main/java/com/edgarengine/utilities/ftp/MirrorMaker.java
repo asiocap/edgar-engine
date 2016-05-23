@@ -71,7 +71,7 @@ public class MirrorMaker {
                 System.out.printf("File %s has been downloaded successfully.\n", local_file_path);
             }
 
-            return true;
+            return success;
         } catch (IOException ex) {
             System.out.println("Error: " + ex.getMessage());
             ex.printStackTrace();

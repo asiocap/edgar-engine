@@ -1,5 +1,7 @@
 package com.edgarengine.kafka;
 
+import com.edgarengine.kafka.pojo.Form4Object;
+
 /**
  * <p>
  * Define the mapping from topic prefix to serializable data structure,

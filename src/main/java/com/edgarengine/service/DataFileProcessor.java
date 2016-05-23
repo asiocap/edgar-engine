@@ -3,7 +3,7 @@ package com.edgarengine.service;
 import com.edgarengine.dao.Form4MongoDao;
 import com.edgarengine.documents.XMLFormDocument;
 import com.edgarengine.indexer.FileStatusEnum;
-import com.edgarengine.kafka.Form4Object;
+import com.edgarengine.kafka.pojo.Form4Object;
 import com.edgarengine.mongo.DataFileSchema;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
@@ -99,9 +99,10 @@ public class DataFileProcessor {
             schema = new BasicDBObject("_type_", "form4");
         }
 
-        if (updateSchema(schema, json_object, "schema")) {
+        if (updateSchema(schema, json_object, "schema", 1)) {
             data_schemas_collection.findOneAndDelete(new BasicDBObject("_type_", "form4"));
             data_schemas_collection.insertOne(schema);
+            LOG.info(schema.toString());
         }
 
         // Send it to Kafka
@@ -143,20 +144,39 @@ public class DataFileProcessor {
         return producer;
     }
 
-    public static boolean updateSchema(BasicDBObject schema, JSONObject data, String name) {
+    public static boolean updateSchema(BasicDBObject schema, JSONObject data, String name, int len) {
         boolean updated = false;
         if (!schema.containsField(name) || schema.get(name) instanceof String) {
             schema.put(name, new BasicDBObject());
+            updated = true;
         }
         BasicDBObject set = (BasicDBObject) schema.get(name);
+        if (len != 1 || set.containsField("_min_")) {
+            int min = set.containsField("_min_") ? set.getInt("_min_") : Integer.MAX_VALUE;
+            int max = set.containsField("_max_") ? set.getInt("_max_") : Integer.MIN_VALUE;
+            if (min > len) {
+                set.put("_min_", len);
+                updated = true;
+            }
+
+            if (max < len) {
+                set.put("_max_", len);
+                updated = true;
+            }
+        }
 
         for (String key : data.keySet()) {
             Object node = data.get(key);
             if (node instanceof JSONObject) {
-                updateSchema(set, (JSONObject) node, key);
+                if (updateSchema(set, (JSONObject) node, key, 1)) {
+                    updated = true;
+                }
+
             } else if (node instanceof JSONArray) {
                 for(int i = 0; i < ((JSONArray) node).length(); i++) {
-                    updateSchema(set, (JSONObject) ((JSONArray) node).get(i), key);
+                    if (updateSchema(set, (JSONObject) ((JSONArray) node).get(i), key, ((JSONArray) node).length())) {
+                        updated = true;
+                    }
                 }
             } else if (!set.containsField(key)) {
                 set.put(key, node.getClass().getCanonicalName());

@@ -1,6 +1,9 @@
-package com.edgarengine.kafka;
+package com.edgarengine.kafka.pojo;
+
+import com.edgarengine.kafka.CompanyIndexed;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 import com.facebook.swift.codec.ThriftField;
 import com.facebook.swift.codec.ThriftStruct;
@@ -8,6 +11,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import static com.edgarengine.mongo.DataFileSchema.*;
@@ -21,6 +25,7 @@ import static com.edgarengine.mongo.DataFileSchema.*;
  */
 @ThriftStruct
 public class Form4Object implements CompanyIndexed {
+    private static Logger LOG = Logger.getLogger(Form4Object.class.getName());
 
     @ThriftField(4)
     public String companyName;
@@ -40,7 +45,8 @@ public class Form4Object implements CompanyIndexed {
     @ThriftField(6)
     public String dateOfChange;
 
-
+    @ThriftField(7)
+    public DerivativeTable derivativeTable;
 
 
     // For Thrift deserialization purpose
@@ -53,6 +59,30 @@ public class Form4Object implements CompanyIndexed {
         objectId = object.getString(_raw_file_path.field_name());
         accessNumber = object.getString(AccessionNumber.field_name());
         filedOfDate = object.getString(FiledAsOfDate.field_name());
+        dateOfChange = object.getString(DateAsOfChange.field_name());
+
+        JSONArray documents = object.getJSONArray("DOCUMENT");
+
+        boolean xmlFound = false;
+        for (int i = 0; i < documents.length(); i++) {
+            JSONObject doc = (JSONObject) documents.get(i);
+            if (doc.has("XML")) {
+                if (xmlFound) {
+                    LOG.severe(String.format("Multiple XML in Document in %s", objectId));
+                    break;
+                }
+                xmlFound = true;
+
+                JSONObject xml = (JSONObject) doc.get("XML");
+                JSONObject ownershipDocument = (JSONObject) xml.get("ownershipDocument");
+                if (ownershipDocument.has("derivativeTable") && ownershipDocument.get("derivativeTable") instanceof JSONObject) {
+                    LOG.severe("FOUND derivativeTable");
+                    derivativeTable = new DerivativeTable((JSONObject) ownershipDocument.get("derivativeTable"));
+                }
+            }
+        }
+
+
     }
 
     @Override
@@ -67,6 +97,26 @@ public class Form4Object implements CompanyIndexed {
 
     public String getObjectId() {
         return objectId;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+//        sb.append("Form4");
+//        sb.append("\n").append("objectId =").append(objectId);
+//
+//        sb.append("\n").append("objectId = ").append(objectId);
+//        sb.append("\n").append("accessNumber = ").append(accessNumber);
+//        sb.append("\n").append("filedOfDate = ").append(filedOfDate);
+//        sb.append("\n").append("dateOfChange = ").append(dateOfChange);
+//        sb.append("\n").append("objectId = ").append(objectId);
+
+        if (derivativeTable != null) {
+            sb.append("\n\n").append(derivativeTable.toString());
+        }
+
+        return sb.toString();
     }
 
     /**
@@ -97,9 +147,8 @@ public class Form4Object implements CompanyIndexed {
         while (true) {
             ConsumerRecords<String, Form4Object> records = consumer.poll(100);
             for (ConsumerRecord<String, Form4Object> record : records) {
-                System.out.printf("counter = %s, offset = %s, key = %s, objectId = %s, filedOfDate = %s accessNumber = %s\n",
-                        counter, record.offset(), record.key(), record.value().objectId, record.value().filedOfDate,
-                        record.value().accessNumber);
+                System.out.printf("counter = %s, offset = %s, key = %s, value = %s\n",
+                        counter, record.offset(), record.key(), record.value().toString());
                 counter++;
                 buffer.add(record);
             }
