@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Created by jinchengchen on 5/22/16.
+ *
+ * @author Jincheng Chen
  */
 @ThriftStruct
 public class DerivativeTable {

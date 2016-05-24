@@ -11,7 +11,8 @@ import java.util.concurrent.Semaphore;
 import java.util.logging.Logger;
 
 /**
- * Created by jinchengchen on 4/26/16.
+ *
+ * @author Jincheng Chen
  */
 public class MirrorMaker {
     private static Logger LOG = Logger.getLogger(MirrorMaker.class.getName());

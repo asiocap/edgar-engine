@@ -1,12 +1,14 @@
 package com.edgarengine.indexer;
 
 /**
- * Created by jinchengchen on 4/27/16.
+ *
+ * @author Jincheng Chen
  */
 public enum FileStatusEnum {
     EXCEPTION(-1, "exception"),
     NOT_FOUND(0, "not_found"),
     INITIALIZED(1, "initialized"),
+    DOWNLOAD_FAILED(5, "download_failed"),
     DOWNLOADED(6, "downloaded"),
     PROCESSING(100, "processing"),
     PROCESSED(200, "processed"),

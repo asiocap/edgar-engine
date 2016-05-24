@@ -3,7 +3,8 @@ package com.edgarengine.mongo;
 import com.edgarengine.indexer.FileStatusEnum;
 
 /**
- * Created by jinchengchen on 4/28/16.
+ *
+ * @author Jincheng Chen
  */
 public enum DataFileSchema {
     CompanyName("Company Name"),

@@ -4,8 +4,13 @@ import com.facebook.swift.codec.ThriftField;
 import com.facebook.swift.codec.ThriftStruct;
 import org.json.JSONObject;
 
+import static com.edgarengine.kafka.pojo.Utilities.getDoubleValue;
+import static com.edgarengine.kafka.pojo.Utilities.getIntValue;
+import static com.edgarengine.kafka.pojo.Utilities.getStringValue;
+
 /**
- * Created by jinchengchen on 5/22/16.
+ *
+ * @author Jincheng Chen
  */
 @ThriftStruct
 public class DerivativeHolding {
@@ -40,7 +45,27 @@ public class DerivativeHolding {
     public DerivativeHolding() {}
 
     DerivativeHolding(JSONObject json) {
+        if (json.has("underlyingSecurity")) {
+            JSONObject underlyingSecurity = (JSONObject) json.get("underlyingSecurity");
+            underlyingSecurityShares = getIntValue("underlyingSecurityShares", underlyingSecurity);
+            underlyingSecurityTitle = getStringValue("underlyingSecurityTitle", underlyingSecurity);
+        }
 
+        if (json.has("postTransactionAmounts")) {
+            JSONObject postTransactionAmounts = (JSONObject) json.get("postTransactionAmounts");
+            sharesOwnedFollowingTransaction = getIntValue("sharesOwnedFollowingTransaction", postTransactionAmounts);
+        }
+
+        if (json.has("ownershipNature")) {
+            JSONObject ownershipNature = (JSONObject) json.get("ownershipNature");
+            directOrIndirectOwnership = getStringValue("directOrIndirectOwnership", ownershipNature);
+            natureOfOwnership = getStringValue("natureOfOwnership", ownershipNature);
+        }
+
+        conversionOrExercisePrice = getDoubleValue("conversionOrExercisePrice", json);
+        exerciseDate = getStringValue("exerciseDate", json);
+        securityTitle = getStringValue("securityTitle", json);
+        expirationDate = getStringValue("expirationDate", json);
     }
 
     @Override

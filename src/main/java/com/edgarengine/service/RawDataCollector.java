@@ -6,7 +6,8 @@ import java.io.File;
 import java.util.logging.Logger;
 
 /**
- * Created by jinchengchen on 4/26/16.
+ *
+ * @author Jincheng Chen
  */
 public enum RawDataCollector {
     INDEX_FILES_COLLECTOR("/edgar/daily-index", true, false),

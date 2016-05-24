@@ -1,14 +1,18 @@
 package com.edgarengine.kafka.pojo;
 
+import static com.edgarengine.kafka.pojo.Utilities.getDoubleValue;
+import static com.edgarengine.kafka.pojo.Utilities.getIntValue;
+import static com.edgarengine.kafka.pojo.Utilities.getStringValue;
+
 import com.facebook.swift.codec.ThriftField;
 import com.facebook.swift.codec.ThriftStruct;
 import org.json.JSONObject;
 
-import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Created by jinchengchen on 5/22/16.
+ *
+ * @author Jincheng Chen
  */
 @ThriftStruct
 public class DerivativeTransaction {
@@ -36,7 +40,7 @@ public class DerivativeTransaction {
     public String underlyingSecurityTitle;
 
     @ThriftField(8)
-    public String sharesOwnedFollowingTransaction;
+    public int sharesOwnedFollowingTransaction;
 
     @ThriftField(9)
     public String directOrIndirectOwnership;
@@ -57,7 +61,7 @@ public class DerivativeTransaction {
     public String transactionCode;
 
     @ThriftField(15)
-    public List<String> exerciseDate;
+    public String exerciseDate;
 
     @ThriftField(16)
     public String transactionDate;
@@ -68,21 +72,56 @@ public class DerivativeTransaction {
     @ThriftField(18)
     public String expirationDate;
 
+    @ThriftField(19)
+    public int transactionTotalValue;
+
     public DerivativeTransaction() {}
 
     DerivativeTransaction(JSONObject json) {
         if (json.has("transactionAmounts")) {
             JSONObject transactionAmounts = (JSONObject) json.get("transactionAmounts");
-            if (transactionAmounts.has("transactionPricePerShare") &&
-                    transactionAmounts.getJSONObject("transactionPricePerShare").has("value")) {
-                transactionPricePerShare = transactionAmounts.getJSONObject("transactionPricePerShare").getInt("value");
-            }
-
-            if (transactionAmounts.has("transactionShares") &&
-                    transactionAmounts.getJSONObject("transactionShares").has("value")) {
-                transactionShares = transactionAmounts.getJSONObject("transactionShares").getInt("value");
-            }
+            transactionPricePerShare = getIntValue("transactionPricePerShare", transactionAmounts);
+            transactionAcquiredDisposedCode = getStringValue("transactionAcquiredDisposedCode", transactionAmounts);
+            transactionShares = getIntValue("transactionShares", transactionAmounts);
+            transactionTotalValue = getIntValue("transactionTotalValue", transactionAmounts);
         }
+
+        deemedExecutionDate = getStringValue("deemedExecutionDate", json);
+        transactionTimeliness = getStringValue("transactionTimeliness", json);
+
+        if (json.has("underlyingSecurity")) {
+            JSONObject underlyingSecurity = (JSONObject) json.get("underlyingSecurity");
+            underlyingSecurityShares = getIntValue("underlyingSecurityShares", underlyingSecurity);
+            underlyingSecurityTitle = getStringValue("underlyingSecurityTitle", underlyingSecurity);
+        }
+
+        if (json.has("postTransactionAmounts")) {
+            JSONObject postTransactionAmounts = (JSONObject) json.get("postTransactionAmounts");
+            sharesOwnedFollowingTransaction = getIntValue("sharesOwnedFollowingTransaction", postTransactionAmounts);
+        }
+
+        if (json.has("ownershipNature")) {
+            JSONObject ownershipNature = (JSONObject) json.get("ownershipNature");
+            directOrIndirectOwnership = getStringValue("directOrIndirectOwnership", ownershipNature);
+            natureOfOwnership = getStringValue("natureOfOwnership", ownershipNature);
+        }
+
+        conversionOrExercisePrice = getDoubleValue("conversionOrExercisePrice", json);
+
+        if (json.has("transactionCoding")) {
+            JSONObject transactionCoding = (JSONObject) json.get("transactionCoding");
+            transactionFormType = transactionCoding.has("transactionFormType")?
+                    transactionCoding.getInt("transactionFormType") : 0;
+            equitySwapInvolved = transactionCoding.has("equitySwapInvolved")?
+                    transactionCoding.getInt("equitySwapInvolved") : 0;
+            transactionCode = transactionCoding.has("transactionCode")?
+                    transactionCoding.getString("transactionCode") : null;
+        }
+
+        exerciseDate = getStringValue("exerciseDate", json);
+        transactionDate = getStringValue("transactionDate", json);
+        securityTitle = getStringValue("securityTitle", json);
+        expirationDate = getStringValue("expirationDate", json);
     }
 
     @Override

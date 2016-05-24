@@ -76,7 +76,6 @@ public class Form4Object implements CompanyIndexed {
                 JSONObject xml = (JSONObject) doc.get("XML");
                 JSONObject ownershipDocument = (JSONObject) xml.get("ownershipDocument");
                 if (ownershipDocument.has("derivativeTable") && ownershipDocument.get("derivativeTable") instanceof JSONObject) {
-                    LOG.severe("FOUND derivativeTable");
                     derivativeTable = new DerivativeTable((JSONObject) ownershipDocument.get("derivativeTable"));
                 }
             }
@@ -103,14 +102,14 @@ public class Form4Object implements CompanyIndexed {
     public String toString() {
         StringBuilder sb = new StringBuilder();
 
-//        sb.append("Form4");
-//        sb.append("\n").append("objectId =").append(objectId);
-//
-//        sb.append("\n").append("objectId = ").append(objectId);
-//        sb.append("\n").append("accessNumber = ").append(accessNumber);
-//        sb.append("\n").append("filedOfDate = ").append(filedOfDate);
-//        sb.append("\n").append("dateOfChange = ").append(dateOfChange);
-//        sb.append("\n").append("objectId = ").append(objectId);
+        sb.append("Form4");
+        sb.append("\n").append("objectId =").append(objectId);
+
+        sb.append("\n").append("objectId = ").append(objectId);
+        sb.append("\n").append("accessNumber = ").append(accessNumber);
+        sb.append("\n").append("filedOfDate = ").append(filedOfDate);
+        sb.append("\n").append("dateOfChange = ").append(dateOfChange);
+        sb.append("\n").append("objectId = ").append(objectId);
 
         if (derivativeTable != null) {
             sb.append("\n\n").append(derivativeTable.toString());

@@ -29,7 +29,8 @@ import static com.edgarengine.mongo.DataFileSchema.FileName;
 import static com.edgarengine.service.RawDataCollector.GENERIC_FILES_COLLECTOR;
 
 /**
- * Created by jinchengchen on 4/28/16.
+ *
+ * @author Jincheng Chen
  */
 public class DataFileProcessor {
     private static Logger LOG = Logger.getLogger(DataFileProcessor.class.getCanonicalName());
@@ -68,13 +69,19 @@ public class DataFileProcessor {
         FindIterable<BasicDBObject> raw_files = data_files_collection.find(filter);
 
         for (BasicDBObject doc : raw_files) {
-            processForm4(doc.getString(CompanyName.field_name()), doc.getString(CIK.field_name()), doc.getString(FileName.field_name()));
+            processForm4(doc.getString(CompanyName.field_name()), doc.getString(CIK.field_name()),
+                    doc.getString(FileName.field_name()));
         }
     }
 
-    private void processForm4(String company_name, String cik, String file_name) throws ParserConfigurationException, SAXException, IOException {
+    private void processForm4(String company_name, String cik, String file_name) throws ParserConfigurationException,
+            SAXException, IOException {
         // Download it from FTP server if haven't done yet
         if (!GENERIC_FILES_COLLECTOR.sync(file_name)) {
+            BasicDBObject single_file_filter = new BasicDBObject(FileName.field_name(), file_name);
+            BasicDBObject update = new BasicDBObject(FileStatusEnum.FIELD_KEY, FileStatusEnum.DOWNLOAD_FAILED.getId());
+            data_files_collection.findOneAndUpdate(single_file_filter, new BasicDBObject("$set", update));
+
             LOG.severe(String.format("Failed to sync file %s!", file_name));
             return;
         }
