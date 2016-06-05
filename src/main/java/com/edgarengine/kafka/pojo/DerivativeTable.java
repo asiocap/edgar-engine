@@ -31,7 +31,7 @@ public class DerivativeTable {
             if (json.get("derivativeTransaction") instanceof  JSONArray) {
                 JSONArray array = json.getJSONArray("derivativeTransaction");
 
-                for (int i = 0; i < transactions.size(); i++) {
+                for (int i = 0; i < array.length(); i++) {
                     transactions.add(new DerivativeTransaction(array.getJSONObject(i)));
                 }
             } else if (json.get("derivativeTransaction") instanceof JSONObject) {
@@ -49,7 +49,7 @@ public class DerivativeTable {
                 JSONArray array = json.getJSONArray("derivativeHolding");
 
 
-                for (int i = 0; i < holdings.size(); i++) {
+                for (int i = 0; i < array.length(); i++) {
                     holdings.add(new DerivativeHolding(array.getJSONObject(i)));
                 }
             } else if (json.get("derivativeHolding") instanceof JSONObject) {

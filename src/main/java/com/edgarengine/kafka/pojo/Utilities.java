@@ -43,4 +43,20 @@ public class Utilities {
 
         return defaultValue;
     }
+
+    public static int getInteger(String field, JSONObject node) {
+        if (node.has(field)) {
+            if (node.get(field) instanceof Boolean) {
+                if (node.getBoolean(field)) {
+                    return Integer.MAX_VALUE;
+                } else {
+                    return Integer.MIN_VALUE;
+                }
+            } else {
+                return node.getInt(field);
+            }
+        }
+
+        return 0;
+    }
 }

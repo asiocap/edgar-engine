@@ -48,6 +48,12 @@ public class Form4Object implements CompanyIndexed {
     @ThriftField(7)
     public DerivativeTable derivativeTable;
 
+    @ThriftField(8)
+    public NonDerivativeTable nonDerivativeTable;
+
+    @ThriftField(9)
+    public List<ReportingOwner> reportingOwners;
+
 
     // For Thrift deserialization purpose
     public Form4Object() {}
@@ -75,13 +81,33 @@ public class Form4Object implements CompanyIndexed {
 
                 JSONObject xml = (JSONObject) doc.get("XML");
                 JSONObject ownershipDocument = (JSONObject) xml.get("ownershipDocument");
-                if (ownershipDocument.has("derivativeTable") && ownershipDocument.get("derivativeTable") instanceof JSONObject) {
+                if (ownershipDocument.has("derivativeTable") &&
+                        ownershipDocument.get("derivativeTable") instanceof JSONObject) {
                     derivativeTable = new DerivativeTable((JSONObject) ownershipDocument.get("derivativeTable"));
+                }
+
+                if (ownershipDocument.has("nonDerivativeTable") &&
+                        ownershipDocument.get("nonDerivativeTable") instanceof JSONObject) {
+                    nonDerivativeTable = new NonDerivativeTable((JSONObject) ownershipDocument.get("nonDerivativeTable"));
+                }
+
+                if (ownershipDocument.has("reportingOwner")) {
+                    reportingOwners = new ArrayList<ReportingOwner>();
+                    if (ownershipDocument.get("reportingOwner") instanceof JSONArray) {
+                        JSONArray array = ownershipDocument.getJSONArray("reportingOwner");
+
+                        for (int j = 0; j < array.length(); j++) {
+                            reportingOwners.add(new ReportingOwner(array.getJSONObject(j)));
+                        }
+                    } else if (ownershipDocument.get("reportingOwner") instanceof JSONObject) {
+                        reportingOwners.add(new ReportingOwner(ownershipDocument.getJSONObject("reportingOwner")));
+                    } else {
+                        LOG.severe(String.format("Unexpected json node type %s for reportingOwner",
+                                ownershipDocument.get("reportingOwner").getClass().getCanonicalName()));
+                    }
                 }
             }
         }
-
-
     }
 
     @Override
