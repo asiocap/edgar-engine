@@ -141,6 +141,14 @@ public class Form4Object implements CompanyIndexed {
             sb.append("\n\n").append(derivativeTable.toString());
         }
 
+        if (nonDerivativeTable != null) {
+            sb.append("\n\n").append(nonDerivativeTable.toString());
+        }
+
+        if (reportingOwners != null) {
+            sb.append("\n\nReporting Owners:\n\n").append(reportingOwners.toString());
+        }
+
         return sb.toString();
     }
 

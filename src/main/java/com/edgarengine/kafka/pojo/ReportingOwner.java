@@ -100,4 +100,28 @@ public class ReportingOwner {
             officerTitle = reportingOwnerRelationship.has("officerTitle") ? reportingOwnerRelationship.getString("officerTitle") : null;
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("\nReporting Owner");
+
+        sb.append("\n").append("rptOwnerName =").append(rptOwnerName);
+        sb.append("\n").append("rptOwnerCik = ").append(rptOwnerCik);
+        sb.append("\n").append("rptOwnerCity = ").append(rptOwnerCity);
+        sb.append("\n").append("rptOwnerStateDescription = ").append(rptOwnerStateDescription);
+        sb.append("\n").append("rptOwnerState = ").append(rptOwnerState);
+        sb.append("\n").append("rptOwnerZipCode = ").append(rptOwnerZipCode);
+        sb.append("\n").append("rptOwnerStreet1 = ").append(rptOwnerStreet1);
+        sb.append("\n").append("rptOwnerStreet2 = ").append(rptOwnerStreet2);
+        sb.append("\n").append("isDirector = ").append(isDirector);
+        sb.append("\n").append("otherText = ").append(otherText);
+        sb.append("\n").append("isOfficer = ").append(isOfficer);
+        sb.append("\n").append("isOther = ").append(isOther);
+        sb.append("\n").append("isTenPercentOwner = ").append(isTenPercentOwner);
+        sb.append("\n").append("officerTitle = ").append(officerTitle);
+
+        return sb.toString();
+    }
 }

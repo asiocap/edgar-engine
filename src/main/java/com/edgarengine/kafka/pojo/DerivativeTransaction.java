@@ -32,7 +32,7 @@ public class DerivativeTransaction {
     public String transactionTimeliness;
 
     @ThriftField(6)
-    public int underlyingSecurityShares;
+    public double underlyingSecurityShares;
 
     @ThriftField(7)
     public String underlyingSecurityTitle;
@@ -80,7 +80,7 @@ public class DerivativeTransaction {
             JSONObject transactionAmounts = (JSONObject) json.get("transactionAmounts");
             transactionPricePerShare = getIntValue("transactionPricePerShare", transactionAmounts);
             transactionAcquiredDisposedCode = getStringValue("transactionAcquiredDisposedCode", transactionAmounts);
-            transactionShares = getIntValue("transactionShares", transactionAmounts);
+            transactionShares = (int)getDoubleValue("transactionShares", transactionAmounts);
             transactionTotalValue = getIntValue("transactionTotalValue", transactionAmounts);
         }
 
@@ -89,7 +89,7 @@ public class DerivativeTransaction {
 
         if (json.has("underlyingSecurity")) {
             JSONObject underlyingSecurity = (JSONObject) json.get("underlyingSecurity");
-            underlyingSecurityShares = getIntValue("underlyingSecurityShares", underlyingSecurity);
+            underlyingSecurityShares = getDoubleValue("underlyingSecurityShares", underlyingSecurity);
             underlyingSecurityTitle = getStringValue("underlyingSecurityTitle", underlyingSecurity);
         }
 

@@ -59,4 +59,25 @@ public class NonDerivativeTable {
             }
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("NonDerivativeTable");
+
+        if (transactions != null) {
+            for (NonDerivativeTransaction transaction : transactions) {
+                sb.append("\n").append(transaction.toString());
+            }
+        }
+
+        if (holdings != null) {
+            for (NonDerivativeHolding holding : holdings) {
+                sb.append("\n").append(holding.toString());
+            }
+        }
+
+        return sb.toString();
+    }
 }
